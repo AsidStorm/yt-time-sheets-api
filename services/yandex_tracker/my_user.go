@@ -49,11 +49,8 @@ func (s *service) MyUser() (*models.User, error) {
 
 				response, err := s.doRequest(request, true)
 				if err != nil {
-					response.Body.Close()
 					break
 				}
-
-				fmt.Println(response.StatusCode)
 
 				if response.StatusCode == http.StatusOK {
 					isAdministrator = true
@@ -72,7 +69,6 @@ func (s *service) MyUser() (*models.User, error) {
 
 				response, err := s.doRequest(request, false)
 				if err != nil {
-					response.Body.Close()
 					break
 				}
 

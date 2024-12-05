@@ -1,4 +1,4 @@
-FROM golang:1.22 as build_base
+FROM golang:1.22 AS build_base
 WORKDIR /go/src/yandex.tracker.api
 # Force the go compiler to use modules
 ENV GO111MODULE=on
