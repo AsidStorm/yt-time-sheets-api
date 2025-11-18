@@ -1,4 +1,4 @@
-package v1
+package v3
 
 type session struct {
 	authToken      string

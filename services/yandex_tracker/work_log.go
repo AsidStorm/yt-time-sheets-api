@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"strings"
 	"time"
+
 	"yandex.tracker.api/domain/helpers"
 	"yandex.tracker.api/domain/models"
 )
@@ -27,6 +28,139 @@ type workLog struct {
 	Start     string `json:"start"` // Время начала работ. Вся аналитика строится по нему. А createdAt - это уже для всяких хитростей.
 	CreatedAt string `json:"createdAt"`
 	Duration  string `json:"duration"`
+}
+
+func makeDomainWorkLog(wl workLog) (*models.RawWorkLog, error) {
+	duration, err := helpers.ParseDuration(wl.Duration)
+	if err != nil {
+		return nil, fmt.Errorf("unable to parse duration [%s] due [%s]", wl.Duration, err)
+	}
+
+	start, err := time.Parse("2006-01-02T15:04:05.999-0700", wl.Start)
+	if err != nil {
+		return nil, fmt.Errorf("unable to parse start time [%s] due [%s]", wl.Start, err)
+	}
+
+	log := &models.RawWorkLog{
+		Id:              wl.Id,
+		Duration:        duration,
+		CreatedById:     wl.CreatedBy.Id,
+		CreateByDisplay: wl.CreatedBy.Display,
+		IssueKey:        wl.Issue.Key,
+		IssueDisplay:    wl.Issue.Display,
+		Comment:         wl.Comment,
+		CreatedAt:       start, // 2018-06-06T08:42:06.258+0000
+		Queue:           extractQueue(wl.Issue.Key),
+	}
+
+	return log, nil
+}
+
+func extractQueue(issueKey string) string {
+	split := strings.Split(issueKey, "-")
+
+	if len(split) > 0 {
+		return split[0]
+	}
+
+	return "NONE"
+}
+
+func (s *service) FilterWorkLogs(dateFrom, dateTo time.Time, userIdentities map[string]bool, filter func(log models.RawWorkLog) bool) ([]models.RawWorkLog, error) {
+	var out []models.RawWorkLog
+	var err error
+
+	dateFromParts := strings.Split(dateFrom.String(), " ")
+	dateToParts := strings.Split(dateTo.String(), " ")
+
+	dateFrom, err = time.Parse("2006-01-02", dateFromParts[0])
+	if err != nil {
+		return nil, fmt.Errorf("unable to parse date from [%s] due [%s]", dateFromParts[0], err)
+	}
+
+	dateTo, err = time.Parse("2006-01-02", dateToParts[0])
+	if err != nil {
+		return nil, fmt.Errorf("unable to parse date to [%s] due [%s]", dateToParts[0], err)
+	}
+
+	dateFrom = dateFrom.Truncate(time.Hour * 24).UTC()
+	dateTo = dateTo.Truncate(time.Hour * 24).UTC().Add(time.Hour * 23).Add(time.Minute * 59).Add(time.Second * 59)
+
+	stored := make(map[int64]bool)
+
+	handler := func(r *http.Response) error {
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			return fmt.Errorf("unable to read body due [%s]", err)
+		}
+		defer r.Body.Close()
+
+		var data []workLog
+
+		if err := json.Unmarshal(body, &data); err != nil {
+			return fmt.Errorf("unable to unmarshal work logs due [%s]", err)
+		}
+
+		for _, l := range data {
+			if _, ok := stored[l.Id]; ok {
+				continue
+			}
+
+			if len(userIdentities) > 0 && !userIdentities[l.CreatedBy.Id] { // Фильтр по UserIdentities вшит, т.к. это позволяет значительно оптимизировать при одном юзере (наиболее частый кейс) запрос
+				continue
+			}
+
+			wl, err := makeDomainWorkLog(l)
+			if err != nil {
+				return fmt.Errorf("unable to convert tracker work log to domain due [%s]", err)
+			}
+
+			if !filter(*wl) {
+				continue
+			}
+
+			stored[l.Id] = true
+
+			out = append(out, *wl)
+		}
+
+		return nil
+	}
+
+	limit := 200
+
+	interval := time.Hour * 24 * 3
+	if dateTo.Sub(dateFrom).Abs() > time.Hour*24*30 {
+		interval = time.Hour * 24 * 15
+	}
+
+	for dateFrom.Before(dateTo) {
+		to := dateFrom.Add(interval).Add(time.Second * -1)
+		if to.After(dateTo) {
+			to = dateTo
+		}
+
+		input := []byte(fmt.Sprintf(`{"start":{"from":"%s%s","to":"%s%s"}}`, dateFrom.Format("2006-01-02T15:04:05.999"), dateFromParts[2], to.Format("2006-01-02T15:04:05.999"), dateFromParts[2]))
+
+		if len(userIdentities) == 1 {
+			for identity, _ := range userIdentities {
+				input = []byte(fmt.Sprintf(`{"createdBy":"%s","start":{"from":"%s%s","to":"%s%s"}}`, identity, dateFrom.Format("2006-01-02T15:04:05.999"), dateFromParts[2], to.Format("2006-01-02T15:04:05.999"), dateFromParts[2]))
+			}
+		}
+
+		if err := s.paginatorTracker(http.MethodPost, "/v3/worklog/_search", input, handler); err != nil {
+			return nil, fmt.Errorf("unable to paginate work logs due [%s]", err)
+		}
+
+		dateFrom = dateFrom.Add(interval)
+		limit--
+
+		if limit <= 0 {
+			return nil, errors.New("200 days limit")
+		}
+	}
+
+	return out, nil
 }
 
 func (s *service) WorkLogs(userIdentities, queues []string, dateFrom, dateTo time.Time) ([]models.WorkLog, []string, error) {
@@ -77,10 +211,8 @@ func (s *service) WorkLogs(userIdentities, queues []string, dateFrom, dateTo tim
 		}
 
 		for _, l := range data {
-			if haveUsersFilter {
-				if !usersFilter[l.CreatedBy.Id] {
-					continue
-				}
+			if haveUsersFilter && !usersFilter[l.CreatedBy.Id] {
+				continue
 			}
 
 			if haveQueuesFilter {

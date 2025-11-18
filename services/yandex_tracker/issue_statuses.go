@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+
 	"yandex.tracker.api/domain/models"
 )
 
@@ -41,7 +42,7 @@ func (s *service) IssueStatuses() ([]models.IssueStatus, error) {
 	var data []issueStatus
 
 	if err := json.Unmarshal(body, &data); err != nil {
-		return nil, fmt.Errorf("unable to unmarshal statuses body due [%s]", err)
+		return nil, fmt.Errorf("unable to unmarshal statuses body due [%s] (raw: %s)", err, string(body))
 	}
 
 	for _, s := range data {

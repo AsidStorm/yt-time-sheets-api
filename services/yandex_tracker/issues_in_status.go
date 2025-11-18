@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strings"
 	"time"
+
 	"yandex.tracker.api/domain/models"
 )
 
@@ -29,7 +30,7 @@ func getStartAndEndDates(month, year int) (time.Time, time.Time, error) {
 	return startDate, endDate, nil
 }
 
-func (s *service) IssuesInStatus(statuses []string, queues []string, month, year int) ([]models.Issue, error) {
+func (s *service) IssuesInStatus(statuses []string, queues, projects []string, month, year int) ([]models.Issue, error) {
 	var out []models.Issue
 
 	start, end, err := getStartAndEndDates(month, year)
@@ -57,8 +58,13 @@ func (s *service) IssuesInStatus(statuses []string, queues []string, month, year
 		queuesFilter = " AND (Queue: " + strings.Join(wrappedQueues, ",") + ")"
 	}
 
+	projectsFilter := ""
+	if len(projects) > 0 {
+		projectsFilter = " AND (Project: " + strings.Join(projects, ",") + ")"
+	}
+
 	in, err := json.Marshal(filterTaskRequest{
-		Query: fmt.Sprintf(`(%s AND (Status: %s))%s`, strings.Join(parts, " OR "), strings.Join(wrappedStatuses, ","), queuesFilter),
+		Query: fmt.Sprintf(`(%s AND (Status: %s))%s%s`, strings.Join(parts, " OR "), strings.Join(wrappedStatuses, ","), queuesFilter, projectsFilter),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("unable to marshal filter tasks request due [%s]", err)
@@ -83,8 +89,6 @@ func (s *service) IssuesInStatus(statuses []string, queues []string, month, year
 			if i.Spent == "" || i.Spent == "PT0S" {
 				continue
 			}
-
-			fmt.Println(i.Key, i.Spent, i.CreatedAt)
 
 			createdAt, err := time.Parse(layout, i.CreatedAt)
 			if err != nil {

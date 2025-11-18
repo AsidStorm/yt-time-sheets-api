@@ -5,4 +5,5 @@ type Session interface {
 	IAmToken() string
 	OrganizationID() string
 	IsAuthorized() bool
+	TraceId() string
 }

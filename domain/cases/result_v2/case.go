@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 	"time"
+
 	"yandex.tracker.api/domain"
 	"yandex.tracker.api/domain/cases/result"
 	"yandex.tracker.api/domain/models"
@@ -25,9 +26,9 @@ func Run(c domain.Context, r Request) (*result.Response, error) {
 		return nil, fmt.Errorf("unable to initialize case [result_v2] due [%s]", err)
 	}
 
-	issues, err := c.Services().YandexTracker(c.Session()).IssuesInStatus(r.Statuses, r.Queues, r.Month, r.Year)
+	issues, err := c.Services().YandexTracker(c.Session()).IssuesInStatus(r.Statuses, r.Queues, r.Projects, r.Month, r.Year)
 	if err != nil {
-		return nil, fmt.Errorf("unable to retrieve issues in statuses [%s] due [%s] (monthd: %d; year: %d)", err, strings.Join(r.Statuses, ", "), r.Month, r.Year)
+		return nil, fmt.Errorf("unable to retrieve issues in statuses [%s] due [%s] (month: %d; year: %d)", err, strings.Join(r.Statuses, ", "), r.Month, r.Year)
 	}
 
 	if len(issues) == 0 {

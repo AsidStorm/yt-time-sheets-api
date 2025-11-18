@@ -2,12 +2,13 @@ package my_user
 
 import (
 	"fmt"
+
 	"yandex.tracker.api/domain"
 	"yandex.tracker.api/domain/models"
 )
 
 type Response struct {
-	User models.User
+	User models.User `json:"user"`
 }
 
 func Run(c domain.Context) (*Response, error) {

@@ -1,4 +1,4 @@
-package v1
+package v3
 
 import (
 	"encoding/json"
@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
-
 	"yandex.tracker.api/domain"
 	"yandex.tracker.api/presenters/jsonapi"
 )

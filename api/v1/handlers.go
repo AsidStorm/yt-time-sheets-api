@@ -7,8 +7,10 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+
 	"yandex.tracker.api/domain"
 	"yandex.tracker.api/domain/cases/boards"
+	"yandex.tracker.api/domain/cases/boot"
 	"yandex.tracker.api/domain/cases/config"
 	"yandex.tracker.api/domain/cases/create_work_log"
 	"yandex.tracker.api/domain/cases/delete_work_log"
@@ -24,6 +26,7 @@ import (
 	"yandex.tracker.api/domain/cases/reset_config"
 	"yandex.tracker.api/domain/cases/result"
 	"yandex.tracker.api/domain/cases/result_v2"
+	"yandex.tracker.api/domain/cases/result_v3"
 	"yandex.tracker.api/domain/cases/set_config"
 	"yandex.tracker.api/domain/cases/sprint_tasks"
 	"yandex.tracker.api/domain/cases/sprints"
@@ -52,6 +55,20 @@ func Ping(_ map[string]string, c domain.Context, _ http.ResponseWriter, _ *http.
 	}
 
 	out, err := jsonapi.MarshalPingResponse(response.PingResult)
+	if err != nil {
+		return InternalServerError(err)
+	}
+
+	return OK(out)
+}
+
+func Boot(_ map[string]string, c domain.Context, _ http.ResponseWriter, _ *http.Request) (int, []byte, error) {
+	response, err := boot.Run(c)
+	if err != nil {
+		return InternalServerError(err)
+	}
+
+	out, err := json.Marshal(response)
 	if err != nil {
 		return InternalServerError(err)
 	}
@@ -278,6 +295,31 @@ func Result(_ map[string]string, c domain.Context, _ http.ResponseWriter, r *htt
 	}
 
 	out, err := jsonapi.MarshalResultResponse(response.WorkLogs, response.DateFrom, response.DateTo)
+	if err != nil {
+		return InternalServerError(err)
+	}
+
+	return OK(out)
+}
+
+func ResultV3(_ map[string]string, c domain.Context, _ http.ResponseWriter, r *http.Request) (int, []byte, error) {
+	var request result_v3.Request
+
+	in, err := io.ReadAll(r.Body)
+	if err != nil {
+		return BadRequest(err)
+	}
+
+	if err := json.Unmarshal(in, &request); err != nil {
+		return BadRequest(err)
+	}
+
+	response, err := result_v3.Run(c, request)
+	if err != nil {
+		return InternalServerError(err)
+	}
+
+	out, err := json.Marshal(response)
 	if err != nil {
 		return InternalServerError(err)
 	}

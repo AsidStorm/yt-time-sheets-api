@@ -1,12 +1,14 @@
 package main
 
 import (
+	"go.uber.org/zap"
 	"yandex.tracker.api/domain"
 	"yandex.tracker.api/domain/services"
 	"yandex.tracker.api/services/yandex_tracker"
 )
 
 type ctx struct {
+	logger  *zap.SugaredLogger
 	session domain.Session
 	svs     *svs
 }
@@ -34,6 +36,14 @@ func (s session) IsAuthorized() bool {
 	return false
 }
 
+func (s session) TraceId() string {
+	return "runtime"
+}
+
+func (c *ctx) Logger() domain.Logger {
+	return c.logger
+}
+
 func (c *ctx) Services() domain.Services {
 	return c.svs
 }
@@ -54,5 +64,6 @@ func (c *ctx) WithSession(session domain.Session) domain.Context {
 	return &ctx{
 		session: session,
 		svs:     c.svs,
+		logger:  c.logger.With(zap.String("trace_id", session.TraceId())),
 	}
 }
