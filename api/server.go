@@ -2,10 +2,10 @@ package api
 
 import (
 	"encoding/json"
+	"net/http"
+
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
-	"log"
-	"net/http"
 )
 
 type Server struct {
@@ -63,12 +63,6 @@ func loggingMiddleware(next http.Handler) http.Handler {
 		if requestId == "" {
 			requestId = uuid.New().String()
 			r.Header.Set("X-Request-Id", requestId)
-		}
-
-		isHealthRoute := r.RequestURI == "/health" && r.Method == http.MethodGet
-
-		if !isHealthRoute {
-			log.Printf("%s %s\n", r.Method, r.RequestURI)
 		}
 
 		next.ServeHTTP(w, r)

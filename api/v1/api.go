@@ -2,6 +2,7 @@ package v1
 
 import (
 	"net/http"
+
 	"yandex.tracker.api/domain"
 
 	"github.com/gorilla/mux"
@@ -13,6 +14,8 @@ func Register(r *mux.Router, c domain.Context) {
 	router := r.PathPrefix(RouterPrefix).Subrouter()
 
 	handle := wrapHandler(c, router)
+
+	handle("/boot", http.MethodGet, Boot, false)
 
 	handle("/ping", http.MethodGet, Ping, false)
 	handle("/config", http.MethodGet, Config, true)
@@ -34,4 +37,6 @@ func Register(r *mux.Router, c domain.Context) {
 	handle("/me", http.MethodGet, Me, false)
 	handle("/work_logs", http.MethodPost, CreateWorkLog, false)
 	handle("/filter_tasks", http.MethodPost, FilterTasks, false)
+
+	handle("/result_v3", http.MethodPost, ResultV3, false)
 }

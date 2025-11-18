@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"time"
+
 	"yandex.tracker.api/domain/models"
 )
 
@@ -20,11 +22,15 @@ func (s *service) IssuesByKeys(issueKeys []string) (map[string]models.Issue, err
 		return out, nil
 	}
 
-	chunks := chunkSlice(issueKeys, 100)
+	chunks := chunkSlice(issueKeys, 150)
 
-	for _, chunk := range chunks {
+	for idx, chunk := range chunks {
 		if len(chunk) == 0 {
 			continue
+		}
+
+		if idx%10 == 0 { // to avoid requests limit
+			time.Sleep(time.Second)
 		}
 
 		in, err := json.Marshal(issueSearchRequest{Keys: chunk})

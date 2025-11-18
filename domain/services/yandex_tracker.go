@@ -2,6 +2,7 @@ package services
 
 import (
 	"time"
+
 	"yandex.tracker.api/domain/models"
 )
 
@@ -24,5 +25,9 @@ type YandexTracker interface {
 	MyUser() (*models.User, error)
 	CreateIssueComment(issueKey, issueComment string) error
 	IssueStatuses() ([]models.IssueStatus, error)
-	IssuesInStatus(statuses []string, queues []string, month, year int) ([]models.Issue, error)
+	IssuesInStatus(statuses []string, queues, projects []string, month, year int) ([]models.Issue, error)
+
+	FilterWorkLogs(dateFrom, dateTo time.Time, userIdentities map[string]bool, filter func(workLog models.RawWorkLog) bool) ([]models.RawWorkLog, error)
+	IssuesWhereQuery(query string) ([]models.Issue, error)
+	IssuesWhereFilter(queues, projects []string, issueTypes []int64) ([]models.Issue, error)
 }

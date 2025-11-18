@@ -1,7 +1,7 @@
 package models
 
 type Group struct {
-	Id      string
-	Label   string
-	Members []string
+	Id      string   `json:"id"`
+	Label   string   `json:"label"`
+	Members []string `json:"members"`
 }

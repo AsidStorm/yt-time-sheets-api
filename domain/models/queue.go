@@ -1,6 +1,6 @@
 package models
 
 type Queue struct {
-	Key  string
-	Name string
+	Key  string `json:"key"`
+	Name string `json:"name"`
 }
