@@ -5,7 +5,6 @@ import (
 	"sync"
 
 	"yandex.tracker.api/domain"
-	"yandex.tracker.api/domain/cases/boards"
 	"yandex.tracker.api/domain/cases/issue_statuses"
 	"yandex.tracker.api/domain/cases/issue_types"
 	"yandex.tracker.api/domain/cases/my_user"
@@ -20,7 +19,6 @@ type Response struct {
 	Users         []models.User                `json:"users"`
 	Groups        []models.Group               `json:"groups"`
 	Queues        []models.Queue               `json:"queues"`
-	Boards        []models.Board               `json:"boards"`
 	IssueTypes    []models.DictionaryIssueType `json:"issueTypes"`
 	IssueStatuses []models.IssueStatus         `json:"issueStatuses"`
 	Projects      []models.Project             `json:"projects"`
@@ -35,7 +33,7 @@ func Run(c domain.Context) (*Response, error) {
 	lock := &sync.Mutex{}
 	errCh := make(chan error, 7) // Buffered channel to prevent blocking
 
-	wg.Add(7)
+	wg.Add(6)
 
 	out := &Response{}
 
@@ -78,20 +76,6 @@ func Run(c domain.Context) (*Response, error) {
 		lock.Lock()
 		defer lock.Unlock()
 		out.Queues = response.Queues
-
-		wg.Done()
-	}()
-
-	go func() {
-		response, err := boards.Run(c)
-		if err != nil {
-			errCh <- fmt.Errorf("unable to retrieve boards due [%s]", err)
-			return
-		}
-
-		lock.Lock()
-		defer lock.Unlock()
-		out.Boards = response.Boards
 
 		wg.Done()
 	}()

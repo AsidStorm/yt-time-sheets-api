@@ -49,7 +49,7 @@ func CombineWorkLog(log RawWorkLog, issue Issue) WorkLog {
 }
 
 type WorkLog struct {
-	Id              int64         `json:"id"`
+	Id              int64         `json:"workLogId"`
 	Duration        time.Duration `json:"duration"`
 	CreatedById     string        `json:"createdById"`
 	CreateByDisplay string        `json:"createByDisplay"`
